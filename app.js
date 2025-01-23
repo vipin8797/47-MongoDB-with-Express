@@ -1,7 +1,7 @@
 //Requiring dependencies
 const express = require("express"); //express
 const mongoose = require('mongoose'); //mongoose for MongoDB
-const Chat = require('/models/chat');
+const Chat = require('./models/chat');
 
 
 //mongoose connection to DB
