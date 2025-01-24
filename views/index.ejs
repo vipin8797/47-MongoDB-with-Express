@@ -9,6 +9,9 @@
 <body>
   <div class="chat-container">
     <h1>Chat History</h1>
+    <form action="/chat/new">
+      <button>New chat</button>
+    </form>
     <div class="chat-row">
       <% chatsData.forEach(chat => { %>
         <div class="chat-card">
@@ -16,6 +19,11 @@
           <p><strong>To:</strong> <%= chat.to %></p>
           <p><strong>Message:</strong> <%= chat.msg %></p>
           <p><strong>Sent At:</strong> <%= new Date(chat.created_At).toLocaleString() %></p>
+          <p><a href="/chats/<%=chat._id%>/edit">Edit</a></p>
+          <form action="/delete/<%= chat._id %>?_method=DELETE" method="POST">
+            <button>Delete</button>
+          </form>
+          
         </div>
       <% }) %>
     </div>
