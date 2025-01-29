@@ -4,7 +4,8 @@ const mongoose = require('mongoose'); //mongoose for MongoDB
 const Chat = require('./models/chat'); //Our Chat model
 const path = require('path');  //Path for ejs templates
 const methodOverride = require('method-override'); //method override fot put,patch,delete req
-const ExpressError = require('./ExpressError');
+const ExpressError = require('./ExpressError'); //custom ExpressError class
+const asyncWrap = require("./asyncWrap"); //to handle asynchronous error.
 
 //mongoose connection to DB
 const DB = "whatsapp";
@@ -29,11 +30,11 @@ app.get('/',(req,res)=>{
 })
 
 //index route
-app.get('/index', async(req,res)=>{
+app.get('/index', asyncWrap(async(req,res)=>{
        let chatsData =  await Chat.find();
        res.render('index.ejs',{chatsData});
     
-})
+}));
 
 //new chat
 app.get('/chat/new',(req,res)=>{
@@ -41,60 +42,65 @@ app.get('/chat/new',(req,res)=>{
 });
   
 
-app.post('/chats',async(req,res,next)=>{
-    try{
-        const {from,msg,to} = req.body;
-        let newChat = new Chat({
-        to:to,
-        from:from,
-        msg:msg,
-        created_At:new Date()
+app.post('/chats', asyncWrap(async (req, res, next) => {
+
+    const { from, msg, to } = req.body;
+    let newChat = new Chat({
+        to: to,
+        from: from,
+        msg: msg,
+        created_At: new Date()
     });
-    await newChat.save();
+    const saved = await newChat.save();
+    if(!saved){
+        next(new ExpressError(404,'chat not saved in DB'));
+    }else{
     res.redirect('/index');
-  } catch (error) {
-        next(error);
     }
-})
+
+}));
 
 
 //Edit route
-app.get('/chats/:id/edit',async(req,res,next)=>{
-    try{
-    const {id} = req.params;
+app.get('/chats/:id/edit', asyncWrap(async (req, res, next) => {
+    const { id } = req.params;
     let chatData = await Chat.findById(id);
-    res.render('edit.ejs',{chatData});
-    }catch(err){
-        next(err);
+    if (!chatData) {
+        next(new ExpressError(400, 'chatData is not found to edit'));
+    } else {
+        res.render('edit.ejs', { chatData });
     }
-  
-});
+}));
     
-app.put('/chats/:id/edit',async(req,res,next)=>{
-    try{
-        const { id } = req.params;
-        const {msg} = req.body;
-    let updated = await Chat.findByIdAndUpdate(id,{msg:msg},{runValidators:true});
-    console.log(updated);
-    res.redirect('/index');
-    }catch (error) {
-        next(error);
+    
+  
+    
+app.put('/chats/:id/edit', asyncWrap(async (req, res, next) => {
+
+    const { id } = req.params;
+    const { msg } = req.body;
+    let updated = await Chat.findByIdAndUpdate(id, { msg: msg }, { runValidators: true });
+    if (!updated) {
+        next(new ExpressError(404, "Chat not found to edit"));
+    } else {
+        res.redirect('/index');
     }
 
-});
+
+}));
 
 
 //Delet route
-app.delete("/delete/:id",async(req,res,next)=>{
-    try{
-        const{id} = req.params;
-    await Chat.findByIdAndDelete(id);
+app.delete("/delete/:id", asyncWrap(async (req, res, next) => {
 
-    res.redirect('/index');
-    }catch (error) {
-       next(err);  
+    const { id } = req.params;
+    const deletedChat = await Chat.findByIdAndDelete(id);
+    if (!deletedChat) {
+        next(new ExpressError(404, "delete operation failed."));
     }
-});
+    res.redirect('/index');
+
+}));
     
 
 
