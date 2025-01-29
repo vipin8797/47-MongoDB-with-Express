@@ -4,7 +4,7 @@ const mongoose = require('mongoose'); //mongoose for MongoDB
 const Chat = require('./models/chat'); //Our Chat model
 const path = require('path');  //Path for ejs templates
 const methodOverride = require('method-override'); //method override fot put,patch,delete req
-
+const ExpressError = require('./ExpressError');
 
 //mongoose connection to DB
 const DB = "whatsapp";
@@ -38,12 +38,13 @@ app.get('/index', async(req,res)=>{
 //new chat
 app.get('/chat/new',(req,res)=>{
     res.render('new.ejs');
-})
+});
+  
 
-app.post('/chats',async(req,res)=>{
-    const {from,msg,to} = req.body;
+app.post('/chats',async(req,res,next)=>{
     try{
-    let newChat = new Chat({
+        const {from,msg,to} = req.body;
+        let newChat = new Chat({
         to:to,
         from:from,
         msg:msg,
@@ -52,47 +53,56 @@ app.post('/chats',async(req,res)=>{
     await newChat.save();
     res.redirect('/index');
   } catch (error) {
-        console.error("Error deleting chat:", error);
-        res.status(500).send("An error occurred while deleting the chat.");
+        next(error);
     }
 })
 
 
 //Edit route
-app.get('/chats/:id/edit',async(req,res)=>{
+app.get('/chats/:id/edit',async(req,res,next)=>{
+    try{
     const {id} = req.params;
     let chatData = await Chat.findById(id);
     res.render('edit.ejs',{chatData});
+    }catch(err){
+        next(err);
+    }
+  
 });
     
-app.put('/chats/:id/edit',async(req,res)=>{
-    const { id } = req.params;
-    const {msg} = req.body;
+app.put('/chats/:id/edit',async(req,res,next)=>{
     try{
+        const { id } = req.params;
+        const {msg} = req.body;
     let updated = await Chat.findByIdAndUpdate(id,{msg:msg},{runValidators:true});
     console.log(updated);
     res.redirect('/index');
     }catch (error) {
-        console.error("Error deleting chat:", error);
-        res.status(500).send("An error occurred while deleting the chat.");
+        next(error);
     }
 
 });
 
 
 //Delet route
-app.delete("/delete/:id",async(req,res)=>{
-    const{id} = req.params;
+app.delete("/delete/:id",async(req,res,next)=>{
     try{
+        const{id} = req.params;
     await Chat.findByIdAndDelete(id);
+
     res.redirect('/index');
     }catch (error) {
-        console.error("Error deleting chat:", error);
-        res.status(500).send("An error occurred while deleting the chat.");
+       next(err);  
     }
 });
     
 
+
+//Error Handling Middleware
+app.use((err,req,res,next)=>{
+    const{status=500,message='something eror happen'} = err;
+    res.status(status).send(message);
+})
 
 
 
